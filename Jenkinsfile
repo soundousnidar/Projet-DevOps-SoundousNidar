@@ -1,10 +1,14 @@
 pipeline {
     agent any
     
+    tools {
+        maven 'Maven-3.9' 
+    }
+    
     stages {
         stage('Checkout') {
             steps {
-                git branch: 'main', 
+                git branch: 'dev', 
                     url: 'https://github.com/soundousnidar/Projet-DevOps-SoundousNidar.git'
             }
         }
@@ -36,10 +40,10 @@ pipeline {
     
     post {
         success {
-            echo '++++++++++ Pipeline réussi !'
+            echo '++++++ Pipeline réussi !'
         }
         failure {
-            echo '---------- Pipeline échoué !'
+            echo '------ Pipeline échoué !'
         }
     }
 }
