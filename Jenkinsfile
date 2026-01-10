@@ -31,9 +31,40 @@ pipeline {
             }
         }
         
-        stage('Deploy') {
+        stage('Docker Build') {
             steps {
-                sh 'echo "Déploiement simulé"'
+                script {
+                    // Construire l'image Docker
+                    sh 'docker build -t projet-devops-soundousnidar:latest .'
+                    echo '++++++++ Image Docker construite'
+                    
+                    // Optionnel : voir les images
+                    sh 'docker images | grep projet-devops'
+                }
+            }
+        }
+        
+        stage('Docker Run') {
+            steps {
+                script {
+                    // Arrêter le conteneur s'il existe déjà
+                    sh 'docker stop devops-app || true'
+                    sh 'docker rm devops-app || true'
+                    
+                    // Lancer le conteneur
+                    sh 'docker run -d --name devops-app -p 8081:8080 projet-devops-soundousnidar:latest'
+                    echo '+++++++++ Conteneur Docker lancé sur http://localhost:8081'
+                }
+            }
+        }
+        
+        stage('Verify') {
+            steps {
+                script {
+                    // Vérifier que le conteneur tourne
+                    sh 'docker ps | grep devops-app'
+                    echo '++++++++++ Application déployée avec Docker !'
+                }
             }
         }
     }
@@ -41,6 +72,8 @@ pipeline {
     post {
         success {
             echo '++++++ Pipeline réussi !'
+            // Option : Notification Slack ici
+            // slackSend(channel: '#devops', message: 'Pipeline réussi!')
         }
         failure {
             echo '------ Pipeline échoué !'
