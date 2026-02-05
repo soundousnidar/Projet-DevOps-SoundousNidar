@@ -1,29 +1,35 @@
 pipeline {
     agent any
-    
+
     tools {
-        maven 'Maven-3.9' 
+        maven 'Maven-3.9'
     }
-    
+
+    environment {
+        SLACK_WEBHOOK = credentials('slack-webhook')
+    }
+
     stages {
+
         stage('Checkout') {
             steps {
-                git branch: 'main', 
+                git branch: 'dev',
                     url: 'https://github.com/soundousnidar/Projet-DevOps-SoundousNidar.git'
             }
         }
-        
+
         stage('Build') {
             steps {
                 sh 'mvn clean compile'
             }
         }
-        
+
         stage('Test') {
             steps {
                 script {
                     echo '🧪 EXÉCUTION DES TESTS'
                     sh 'echo "Tests unitaires exécutés avec succès"'
+
                     sh '''
                         echo "=== VÉRIFICATION DOCKER ==="
                         echo "Dockerfile: $(ls Dockerfile 2>/dev/null && echo '✅' || echo '❌')"
@@ -32,13 +38,13 @@ pipeline {
                 }
             }
         }
-        
+
         stage('Archive') {
             steps {
                 archiveArtifacts artifacts: 'target/**/*', fingerprint: true
             }
         }
-        
+
         stage('Docker Integration') {
             steps {
                 script {
@@ -51,27 +57,37 @@ pipeline {
                 }
             }
         }
+
+        stage('Notify Slack') {
+            steps {
+                sh '''
+                curl -X POST -H 'Content-type: application/json' \
+                --data '{"text":"🚀 Pipeline Jenkins démarré : ${JOB_NAME} #${BUILD_NUMBER}"}' \
+                $SLACK_WEBHOOK
+                '''
+            }
+        }
     }
-    
+
     post {
-        always {
-            echo '📊 STATISTIQUES DU PIPELINE'
+        success {
             sh '''
-                echo "Date: $(date)"
-                echo "Branche: main"
-                echo "Application: Java/Maven"
-                echo "Docker: Intégré"
+            curl -X POST -H 'Content-type: application/json' \
+            --data '{"text":"✅ BUILD RÉUSSI : ${JOB_NAME} #${BUILD_NUMBER}"}' \
+            $SLACK_WEBHOOK
             '''
         }
-        
-        success {
-            echo '✅ PIPELINE RÉUSSI'
-            echo 'Git/GitHub, Maven, Docker, Archive - Tous validés!'
-        }
-        
+
         failure {
-            echo '❌ PIPELINE ÉCHOUÉ'
-            echo 'Vérifiez les logs pour plus de détails'
+            sh '''
+            curl -X POST -H 'Content-type: application/json' \
+            --data '{"text":"❌ BUILD ÉCHOUÉ : ${JOB_NAME} #${BUILD_NUMBER}"}' \
+            $SLACK_WEBHOOK
+            '''
+        }
+
+        always {
+            echo '📊 FIN DU PIPELINE'
         }
     }
 }
